@@ -8,7 +8,6 @@ import {
   isCustomModel,
   renderModelOptions,
 } from './modelOptions';
-import { KNOWN_PROVIDERS } from '../state/config';
 import type { AgentInfo, AppConfig, ExecMode } from '../types';
 
 interface Props {
@@ -40,28 +39,9 @@ export function SettingsDialog({
 }: Props) {
   const { t, locale, setLocale } = useI18n();
   const [cfg, setCfg] = useState<AppConfig>(initial);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [languageMenuRect, setLanguageMenuRect] = useState<DOMRect | null>(null);
   const languageRef = useRef<HTMLDivElement | null>(null);
-  const [serverProviders, setServerProviders] = useState<{ openrouter: boolean }>({ openrouter: false });
-
-  // If the daemon goes offline mid-edit, force API mode so the UI doesn't
-  // pretend Local CLI is selectable.
-  useEffect(() => {
-    if (!daemonLive && cfg.mode === 'daemon') {
-      setCfg((c) => ({ ...c, mode: 'api' }));
-    }
-  }, [daemonLive, cfg.mode]);
-
-  // Fetch which server-side provider keys are configured (OpenRouter, etc.).
-  useEffect(() => {
-    if (!daemonLive) return;
-    fetch('/api/config/providers')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setServerProviders(data); })
-      .catch(() => {});
-  }, [daemonLive]);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -96,14 +76,10 @@ export function SettingsDialog({
 
   const setMode = (mode: ExecMode) => setCfg((c) => ({ ...c, mode }));
 
-  const isOpenRouterServerKey =
-    cfg.baseUrl.replace(/\/+$/, '').startsWith('https://openrouter.ai') &&
-    serverProviders.openrouter;
-
   const canSave =
     cfg.mode === 'daemon'
       ? Boolean(cfg.agentId && agents.find((a) => a.id === cfg.agentId)?.available)
-      : Boolean((cfg.apiKey.trim() || isOpenRouterServerKey) && cfg.model.trim() && cfg.baseUrl.trim());
+      : Boolean(cfg.model.trim());
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -312,57 +288,12 @@ export function SettingsDialog({
           ) : (
             <section className="settings-section">
               <div className="section-head">
-                <h3>{t('settings.apiSection')}</h3>
+                <h3>Modelo</h3>
               </div>
-              <label className="field">
-                <span className="field-label">Provider</span>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const idx = Number(e.target.value);
-                    if (!isNaN(idx) && KNOWN_PROVIDERS[idx]) {
-                      const p = KNOWN_PROVIDERS[idx]!;
-                      setCfg((c) => ({ ...c, baseUrl: p.baseUrl, model: p.model }));
-                    }
-                  }}
-                >
-                  <option value="">— choose a provider —</option>
-                  {KNOWN_PROVIDERS.map((p, i) => (
-                    <option key={i} value={i}>
-                      {p.label}{p.serverKey && serverProviders.openrouter ? ' ✓ server key' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {isOpenRouterServerKey ? (
-                <div className="field">
-                  <span className="field-label">{t('settings.apiKey')}</span>
-                  <p className="hint openrouter-server-key-hint">
-                    Clave configurada en el servidor — no se requiere ingresar una aquí.
-                  </p>
-                </div>
-              ) : (
-                <label className="field">
-                  <span className="field-label">{t('settings.apiKey')}</span>
-                  <div className="field-row">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      placeholder="sk-ant-..."
-                      value={cfg.apiKey}
-                      onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      className="ghost icon-btn"
-                      onClick={() => setShowApiKey((v) => !v)}
-                      title={showApiKey ? t('settings.hideKey') : t('settings.showKey')}
-                    >
-                      {showApiKey ? t('settings.hide') : t('settings.show')}
-                    </button>
-                  </div>
-                </label>
-              )}
+              <div className="field">
+                <span className="field-label">API</span>
+                <p className="hint openrouter-server-key-hint">OpenRouter — clave configurada en el servidor.</p>
+              </div>
               <label className="field">
                 <span className="field-label">{t('settings.model')}</span>
                 <select
@@ -379,15 +310,6 @@ export function SettingsDialog({
                   )}
                 </select>
               </label>
-              <label className="field">
-                <span className="field-label">{t('settings.baseUrl')}</span>
-                <input
-                  type="text"
-                  value={cfg.baseUrl}
-                  onChange={(e) => setCfg({ ...cfg, baseUrl: e.target.value })}
-                />
-              </label>
-              <p className="hint">{t('settings.apiHint')}</p>
             </section>
           )}
 

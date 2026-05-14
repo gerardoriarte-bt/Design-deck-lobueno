@@ -2,25 +2,19 @@ import type { AppConfig } from '../types';
 
 const STORAGE_KEY = 'open-design:config';
 
+export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
 export const DEFAULT_CONFIG: AppConfig = {
   mode: 'api',
   apiKey: '',
-  baseUrl: 'https://api.anthropic.com',
-  model: 'claude-sonnet-4-6',
+  baseUrl: OPENROUTER_BASE_URL,
+  model: 'google/gemini-2.5-flash',
   agentId: null,
   skillId: null,
   designSystemId: null,
-  onboardingCompleted: false,
+  onboardingCompleted: true,
   agentModels: {},
 };
-
-/** Well-known providers with pre-filled base URLs. */
-export const KNOWN_PROVIDERS: Array<{ label: string; baseUrl: string; model: string; serverKey?: boolean }> = [
-  { label: 'Anthropic (Claude)', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-6' },
-  { label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'google/gemini-2.5-flash', serverKey: true },
-  { label: 'MiMo (Xiaomi) — OpenAI', baseUrl: 'https://token-plan-cn.xiaomimiao.com/v1', model: 'mimo-v2.5-pro' },
-  { label: 'MiMo (Xiaomi) — Anthropic', baseUrl: 'https://token-plan-cn.xiaomimiao.com/anthropic', model: 'mimo-v2.5-pro' },
-];
 
 export function loadConfig(): AppConfig {
   try {
