@@ -51,18 +51,14 @@ export function App() {
       const alive = await daemonIsLive();
       if (cancelled) return;
       setDaemonLive(alive);
-      const [agentList, skillList, dsList, projectList, templateList, providersResp] =
+      const [agentList, skillList, dsList, projectList, templateList] =
         await Promise.all([
           alive ? fetchAgents() : Promise.resolve([] as AgentInfo[]),
-          alive ? fetchSkills() : Promise.resolve([] as SkillSummary[]),
-          alive
-            ? fetchDesignSystems()
-            : Promise.resolve([] as DesignSystemSummary[]),
-          alive ? listProjects() : Promise.resolve([] as Project[]),
-          alive ? listTemplates() : Promise.resolve([] as ProjectTemplate[]),
-          alive ? fetch('/api/config/providers').then((r) => r.json()).catch(() => ({})) : Promise.resolve({}),
+          fetchSkills(),
+          alive ? fetchDesignSystems() : Promise.resolve([] as DesignSystemSummary[]),
+          listProjects(),
+          listTemplates(),
         ]);
-      const hasServerOpenRouter = Boolean((providersResp as { openrouter?: boolean }).openrouter);
       if (cancelled) return;
       setAgents(agentList);
       setSkills(skillList);
@@ -73,11 +69,9 @@ export function App() {
       setConfig((prev) => {
         const next = { ...prev };
         next.mode = 'api';
-        if (hasServerOpenRouter) {
-          next.baseUrl = 'https://openrouter.ai/api/v1';
-          next.model = 'google/gemini-2.5-flash';
-          next.onboardingCompleted = true;
-        }
+        next.baseUrl = 'https://openrouter.ai/api/v1';
+        next.model = 'google/gemini-2.5-flash';
+        next.onboardingCompleted = true;
         saveConfig(next);
 
         // Pop the onboarding modal only on the first run.
