@@ -21,11 +21,12 @@ interface Props {
   onRefreshAgents: () => void;
 }
 
-const SUGGESTED_MODELS = [
-  'claude-opus-4-5',
-  'claude-sonnet-4-5',
-  'claude-haiku-4-5',
-  'mimo-v2.5-pro',
+const SELECT_MODELS: Array<{ id: string; label: string }> = [
+  { id: 'google/gemini-2.5-flash',      label: 'Gemini 2.5 Flash — rápido y eficiente (recomendado)' },
+  { id: 'google/gemini-2.5-pro',        label: 'Gemini 2.5 Pro — máxima calidad' },
+  { id: 'anthropic/claude-sonnet-4-6',  label: 'Claude Sonnet 4.6' },
+  { id: 'anthropic/claude-haiku-4-5',   label: 'Claude Haiku 4.5 — más económico' },
+  { id: 'openai/gpt-4o-mini',           label: 'GPT-4o Mini' },
 ];
 
 export function SettingsDialog({
@@ -43,6 +44,7 @@ export function SettingsDialog({
   const [languageOpen, setLanguageOpen] = useState(false);
   const [languageMenuRect, setLanguageMenuRect] = useState<DOMRect | null>(null);
   const languageRef = useRef<HTMLDivElement | null>(null);
+  const [serverProviders, setServerProviders] = useState<{ openrouter: boolean }>({ openrouter: false });
 
   // If the daemon goes offline mid-edit, force API mode so the UI doesn't
   // pretend Local CLI is selectable.
@@ -51,6 +53,15 @@ export function SettingsDialog({
       setCfg((c) => ({ ...c, mode: 'api' }));
     }
   }, [daemonLive, cfg.mode]);
+
+  // Fetch which server-side provider keys are configured (OpenRouter, etc.).
+  useEffect(() => {
+    if (!daemonLive) return;
+    fetch('/api/config/providers')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setServerProviders(data); })
+      .catch(() => {});
+  }, [daemonLive]);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -85,10 +96,14 @@ export function SettingsDialog({
 
   const setMode = (mode: ExecMode) => setCfg((c) => ({ ...c, mode }));
 
+  const isOpenRouterServerKey =
+    cfg.baseUrl.replace(/\/+$/, '').startsWith('https://openrouter.ai') &&
+    serverProviders.openrouter;
+
   const canSave =
     cfg.mode === 'daemon'
       ? Boolean(cfg.agentId && agents.find((a) => a.id === cfg.agentId)?.available)
-      : Boolean(cfg.apiKey.trim() && cfg.model.trim() && cfg.baseUrl.trim());
+      : Boolean((cfg.apiKey.trim() || isOpenRouterServerKey) && cfg.model.trim() && cfg.baseUrl.trim());
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -330,51 +345,7 @@ export function SettingsDialog({
                 <h3>{t('settings.apiSection')}</h3>
               </div>
               <label className="field">
-                <span className="field-label">{t('settings.apiKey')}</span>
-                <div className="field-row">
-                  <input
-                    type={showApiKey ? 'text' : 'password'}
-                    placeholder="sk-ant-..."
-                    value={cfg.apiKey}
-                    onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    className="ghost icon-btn"
-                    onClick={() => setShowApiKey((v) => !v)}
-                    title={
-                      showApiKey ? t('settings.hideKey') : t('settings.showKey')
-                    }
-                  >
-                    {showApiKey ? t('settings.hide') : t('settings.show')}
-                  </button>
-                </div>
-              </label>
-              <label className="field">
-                <span className="field-label">{t('settings.model')}</span>
-                <input
-                  type="text"
-                  value={cfg.model}
-                  list="suggested-models"
-                  onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
-                />
-                <datalist id="suggested-models">
-                  {SUGGESTED_MODELS.map((m) => (
-                    <option value={m} key={m} />
-                  ))}
-                </datalist>
-              </label>
-              <label className="field">
-                <span className="field-label">{t('settings.baseUrl')}</span>
-                <input
-                  type="text"
-                  value={cfg.baseUrl}
-                  onChange={(e) => setCfg({ ...cfg, baseUrl: e.target.value })}
-                />
-              </label>
-              <label className="field">
-                <span className="field-label">Quick fill provider</span>
+                <span className="field-label">Provider</span>
                 <select
                   value=""
                   onChange={(e) => {
@@ -387,9 +358,64 @@ export function SettingsDialog({
                 >
                   <option value="">— choose a provider —</option>
                   {KNOWN_PROVIDERS.map((p, i) => (
-                    <option key={i} value={i}>{p.label}</option>
+                    <option key={i} value={i}>
+                      {p.label}{p.serverKey && serverProviders.openrouter ? ' ✓ server key' : ''}
+                    </option>
                   ))}
                 </select>
+              </label>
+              {isOpenRouterServerKey ? (
+                <div className="field">
+                  <span className="field-label">{t('settings.apiKey')}</span>
+                  <p className="hint openrouter-server-key-hint">
+                    Clave configurada en el servidor — no se requiere ingresar una aquí.
+                  </p>
+                </div>
+              ) : (
+                <label className="field">
+                  <span className="field-label">{t('settings.apiKey')}</span>
+                  <div className="field-row">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      placeholder="sk-ant-..."
+                      value={cfg.apiKey}
+                      onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="ghost icon-btn"
+                      onClick={() => setShowApiKey((v) => !v)}
+                      title={showApiKey ? t('settings.hideKey') : t('settings.showKey')}
+                    >
+                      {showApiKey ? t('settings.hide') : t('settings.show')}
+                    </button>
+                  </div>
+                </label>
+              )}
+              <label className="field">
+                <span className="field-label">{t('settings.model')}</span>
+                <select
+                  value={SELECT_MODELS.some((m) => m.id === cfg.model) ? cfg.model : '__custom__'}
+                  onChange={(e) => {
+                    if (e.target.value !== '__custom__') setCfg({ ...cfg, model: e.target.value });
+                  }}
+                >
+                  {SELECT_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                  {!SELECT_MODELS.some((m) => m.id === cfg.model) && (
+                    <option value="__custom__">{cfg.model} (personalizado)</option>
+                  )}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">{t('settings.baseUrl')}</span>
+                <input
+                  type="text"
+                  value={cfg.baseUrl}
+                  onChange={(e) => setCfg({ ...cfg, baseUrl: e.target.value })}
+                />
               </label>
               <p className="hint">{t('settings.apiHint')}</p>
             </section>
