@@ -21,7 +21,15 @@ export function loadConfig(): AppConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_CONFIG };
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
-    return { ...DEFAULT_CONFIG, ...parsed };
+    return {
+      ...DEFAULT_CONFIG,
+      ...parsed,
+      mode: 'api',
+      baseUrl: OPENROUTER_BASE_URL,
+      model: parsed.model && parsed.model !== 'claude-sonnet-4-5' && parsed.model !== 'claude-sonnet-4-6'
+        ? parsed.model
+        : DEFAULT_CONFIG.model,
+    };
   } catch {
     return { ...DEFAULT_CONFIG };
   }
