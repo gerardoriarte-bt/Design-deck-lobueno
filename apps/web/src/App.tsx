@@ -72,29 +72,13 @@ export function App() {
 
       setConfig((prev) => {
         const next = { ...prev };
-        if (alive) {
-          if (!next.agentId) {
-            const firstAvailable = agentList.find((a) => a.available);
-            if (firstAvailable) next.agentId = firstAvailable.id;
-          }
-          if (!next.designSystemId && dsList.length > 0) {
-            next.designSystemId = dsList.find((d) => d.id === 'default')?.id
-              ?? dsList[0]!.id;
-          }
-        } else {
-          next.mode = 'api';
-        }
-        saveConfig(next);
-
-        // If server has OpenRouter key, always use api mode through the daemon
-        // proxy — daemon mode requires a local agent CLI which doesn't exist
-        // in production deployments.
+        next.mode = 'api';
         if (hasServerOpenRouter) {
-          next.mode = 'api';
           next.baseUrl = 'https://openrouter.ai/api/v1';
           next.model = 'google/gemini-2.5-flash';
           next.onboardingCompleted = true;
         }
+        saveConfig(next);
 
         // Pop the onboarding modal only on the first run.
         if (!next.onboardingCompleted) {

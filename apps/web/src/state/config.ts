@@ -3,7 +3,7 @@ import type { AppConfig } from '../types';
 const STORAGE_KEY = 'open-design:config';
 
 export const DEFAULT_CONFIG: AppConfig = {
-  mode: 'daemon',
+  mode: 'api',
   apiKey: '',
   baseUrl: 'https://api.anthropic.com',
   model: 'claude-sonnet-4-6',

@@ -18,5 +18,6 @@ jobs:
             cd ~/app
             git pull origin main
             pnpm install --frozen-lockfile
+            pnpm --filter @open-design/web build
             pnpm --filter @open-design/daemon build
             pm2 restart deck-design

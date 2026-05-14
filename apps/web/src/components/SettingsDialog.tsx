@@ -129,41 +129,11 @@ export function SettingsDialog({
           )}
         </header>
 
-        <div
-          className="seg-control"
-          role="tablist"
-          aria-label={t('settings.modeAria')}
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={cfg.mode === 'daemon'}
-            className={'seg-btn' + (cfg.mode === 'daemon' ? ' active' : '')}
-            disabled={!daemonLive}
-            onClick={() => setMode('daemon')}
-            title={
-              daemonLive
-                ? t('settings.modeDaemonHelp')
-                : t('settings.modeDaemonOffline')
-            }
-          >
-            <span className="seg-title">{t('settings.modeDaemon')}</span>
-            <span className="seg-meta">
-              {daemonLive
-                ? t('settings.modeDaemonInstalledMeta', { count: installedCount })
-                : t('settings.modeDaemonOfflineMeta')}
-            </span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={cfg.mode === 'api'}
-            className={'seg-btn' + (cfg.mode === 'api' ? ' active' : '')}
-            onClick={() => setMode('api')}
-          >
+        <div className="seg-control">
+          <div className="seg-btn active" style={{ cursor: 'default' }}>
             <span className="seg-title">{t('settings.modeApi')}</span>
             <span className="seg-meta">{t('settings.modeApiMeta')}</span>
-          </button>
+          </div>
         </div>
 
         <div className="modal-body">
