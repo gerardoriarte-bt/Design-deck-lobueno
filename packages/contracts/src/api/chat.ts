@@ -15,6 +15,7 @@ export interface ChatRequest {
   attachments?: string[];
   model?: string | null;
   reasoning?: string | null;
+  skillInputValues?: Record<string, unknown> | null;
 }
 
 export interface ChatRunCreateRequest extends ChatRequest {

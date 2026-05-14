@@ -1,5 +1,6 @@
 import type {
   AgentInfo,
+  ArtifactRecord,
   ChatAttachment,
   ChatMessage,
   Conversation,
@@ -20,6 +21,8 @@ import type {
   SkillSummary,
   UpdateDeployConfigRequest,
 } from '@open-design/contracts';
+
+export type { ArtifactRecord };
 
 export type ExecMode = 'daemon' | 'api';
 

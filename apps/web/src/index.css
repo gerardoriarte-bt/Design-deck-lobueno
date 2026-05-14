@@ -2,53 +2,50 @@
    Open Design — visual language modeled on claude.ai/design
    ============================================================ */
 :root {
-  /* Surface palette — warmer paper, hairline borders, soft shadows.
-     The entry view and project view share the same warm cream backdrop
-     (--bg) so transitioning between them feels seamless. --bg-app is kept
-     as an alias for compatibility but now resolves to the same value. */
-  --bg: #faf9f7;
-  --bg-app: #faf9f7;
+  /* Surface palette — neutral grayscale. */
+  --bg: #f8f8f8;
+  --bg-app: #f8f8f8;
   --bg-panel: #ffffff;
-  --bg-subtle: #f4f2ed;
-  --bg-muted: #ece9e2;
+  --bg-subtle: #f0f0f0;
+  --bg-muted: #e8e8e8;
   --bg-elevated: #ffffff;
-  --border: #ebe8e1;
-  --border-strong: #d8d4cb;
-  --border-soft: #f1eee7;
+  --border: #e0e0e0;
+  --border-strong: #c8c8c8;
+  --border-soft: #ebebeb;
 
-  --text: #1a1916;
-  --text-strong: #0d0c0a;
-  --text-muted: #74716b;
-  --text-soft: #989590;
-  --text-faint: #b3b0a8;
+  --text: #1a1a1a;
+  --text-strong: #000000;
+  --text-muted: #666666;
+  --text-soft: #888888;
+  --text-faint: #aaaaaa;
 
-  /* Accent — Claude rust/burnt-sienna. */
-  --accent: #c96442;
-  --accent-strong: #b45a3b;
-  --accent-soft: #f5d8cb;
-  --accent-tint: #fbeee5;
-  --accent-hover: #b45a3b;
+  /* Accent — near-black. */
+  --accent: #1a1a1a;
+  --accent-strong: #000000;
+  --accent-soft: #e0e0e0;
+  --accent-tint: #f0f0f0;
+  --accent-hover: #333333;
 
-  /* Semantic accent tints used by tool / status pills. */
+  /* Semantic tints — functional status colors kept for legibility. */
   --green: #1f7a3a;
-  --green-bg: #e8f7ee;
-  --green-border: #c6ead2;
+  --green-bg: #eef7f1;
+  --green-border: #c8e6d0;
   --blue: #2348b8;
-  --blue-bg: #e8efff;
-  --blue-border: #c8d6ff;
+  --blue-bg: #eef2ff;
+  --blue-border: #ccd6ff;
   --purple: #6c3aa6;
-  --purple-bg: #f3ecf9;
-  --purple-border: #e4d4f1;
+  --purple-bg: #f4f0fa;
+  --purple-border: #e2d6f0;
   --red: #9c2a25;
-  --red-bg: #fdecea;
-  --red-border: #f5c6c2;
+  --red-bg: #fdf0ef;
+  --red-border: #f5cac8;
   --amber: #b26200;
-  --amber-bg: #fff3e0;
+  --amber-bg: #fff8ee;
 
-  --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
-  --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
-  --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
-  --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
+  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.14), 0 8px 16px rgba(0, 0, 0, 0.07);
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -193,7 +190,7 @@ code {
   border-radius: 50%;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #fbeee5 0%, #f5d8cb 100%);
+  background: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
   color: var(--accent);
   flex-shrink: 0;
   overflow: hidden;
@@ -225,7 +222,7 @@ code {
   height: 32px;
   padding: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fbeee5 0%, #f5d8cb 100%);
+  background: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
   border: 1px solid var(--border);
   display: inline-flex;
   align-items: center;
@@ -360,7 +357,7 @@ code {
 .env-pill:hover { background: var(--bg-panel); border-color: var(--border-strong); }
 .env-pill-dot {
   width: 22px; height: 22px; border-radius: 50%;
-  background: linear-gradient(135deg, #d97757 0%, #b85a3b 100%);
+  background: linear-gradient(135deg, #d97757 0%, var(--accent) 100%);
   flex-shrink: 0;
 }
 .env-pill-dot[data-mode="api"] {
@@ -1123,7 +1120,7 @@ code {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fbeee5 0%, #f5d8cb 100%);
+  background: linear-gradient(135deg, var(--accent-tint) 0%, var(--accent-soft) 100%);
   color: var(--accent);
   display: inline-flex;
   align-items: center;
@@ -2587,7 +2584,7 @@ code {
   position: relative;
 }
 .df-row-icon[data-kind="folder"] { background: var(--bg-muted); color: var(--text-soft); }
-.df-row-icon[data-kind="html"] { background: #fbeee5; color: #b85a3b; }
+.df-row-icon[data-kind="html"] { background: var(--accent-tint); color: var(--accent); }
 .df-row-icon[data-kind="image"] { background: var(--green-bg); color: var(--green); }
 .df-row-icon[data-kind="code"] { background: #fff7d8; color: #8c6700; }
 .df-row-icon[data-kind="text"] { background: var(--bg-subtle); color: var(--text-muted); }
@@ -3778,8 +3775,8 @@ code {
   background: color-mix(in srgb, #b7791f 10%, var(--bg-panel));
 }
 .deploy-result.protected {
-  border: 1px solid color-mix(in srgb, #c96442 48%, var(--border));
-  background: color-mix(in srgb, #c96442 10%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
 }
 .deploy-result-label {
   font-size: 12px;
@@ -4318,9 +4315,9 @@ code {
 .qf-card:hover { border-color: var(--border-strong); }
 .qf-card:active { transform: translateY(1px); }
 .qf-card-on {
-  border-color: var(--accent, #c96442);
-  background: color-mix(in oklch, var(--accent, #c96442) 4%, var(--bg));
-  box-shadow: 0 0 0 1px var(--accent, #c96442) inset;
+  border-color: var(--accent, var(--accent));
+  background: color-mix(in oklch, var(--accent, var(--accent)) 4%, var(--bg));
+  box-shadow: 0 0 0 1px var(--accent, var(--accent)) inset;
 }
 .qf-card-disabled { cursor: not-allowed; opacity: 0.6; }
 .qf-card-head {
@@ -4342,7 +4339,7 @@ code {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
-  background: var(--accent, #c96442);
+  background: var(--accent, var(--accent));
   color: #fff;
   border-radius: 999px;
   flex-shrink: 0;
@@ -5130,6 +5127,114 @@ body.entry-resizing { cursor: col-resize; user-select: none; }
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
+
+/* ============================================================
+   Skill inputs panel — typed form for od.inputs fields.
+   ============================================================ */
+.skill-inputs-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.skill-input-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.skill-input-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.skill-input-required { color: var(--accent); margin-left: 2px; }
+
+.skill-input-field input[type='text'],
+.skill-input-field input[type='number'],
+.skill-input-field select {
+  font-size: 12px;
+  padding: 3px 6px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: inherit;
+}
+
+.skill-input-field input[type='text']:focus,
+.skill-input-field input[type='number']:focus,
+.skill-input-field select:focus { border-color: var(--accent); }
+
+.skill-input-field input[type='number'] { width: 72px; }
+.skill-input-field input[type='text']   { width: 140px; }
+
+/* ============================================================
+   Brief panel — client brief editor anchored below the topbar.
+   ============================================================ */
+.brief-btn.active { color: var(--accent); border-color: var(--accent); }
+
+.brief-panel {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px 12px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.brief-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brief-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.brief-panel-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: inherit;
+}
+
+.brief-panel-textarea:focus { border-color: var(--accent); }
+.brief-panel-empty { color: var(--text-muted); font-size: 12px; padding: 8px 0; margin: 0; }
+
+.artifact-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.artifact-history-item { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.artifact-history-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); }
+.artifact-history-slug { font-weight: 600; color: var(--text); }
+.artifact-history-version { background: var(--accent); color: #fff; border-radius: 3px; padding: 1px 5px; font-size: 10px; }
+.artifact-history-date { margin-left: auto; }
+.artifact-history-title { font-size: 12px; color: var(--text); }
+.artifact-history-actions { display: flex; gap: 6px; margin-top: 4px; }
+.artifact-history-open,
+.artifact-history-continue { font-size: 11px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+.artifact-history-continue { background: var(--accent); color: #fff; border-color: var(--accent); }
+.artifact-history-continue:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ============================================================
    Composer rename input style for inline conversation rename.

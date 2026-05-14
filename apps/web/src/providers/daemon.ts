@@ -56,6 +56,7 @@ export interface DaemonStreamOptions {
   // options and falls back to the CLI default when missing.
   model?: string | null;
   reasoning?: string | null;
+  skillInputValues?: Record<string, unknown> | null;
   initialLastEventId?: string | null;
   onRunCreated?: (runId: string) => void;
   onRunStatus?: (status: ChatRunStatus) => void;
@@ -87,6 +88,7 @@ export async function streamViaDaemon({
   attachments,
   model,
   reasoning,
+  skillInputValues,
   initialLastEventId,
   onRunCreated,
   onRunStatus,
@@ -110,6 +112,7 @@ export async function streamViaDaemon({
     attachments: attachments ?? [],
     model: model ?? null,
     reasoning: reasoning ?? null,
+    skillInputValues: skillInputValues ?? null,
   };
   const body = JSON.stringify(request);
 

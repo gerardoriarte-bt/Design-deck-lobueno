@@ -39,6 +39,7 @@ export interface Project {
   updatedAt: number;
   status?: ProjectStatusInfo;
   pendingPrompt?: string;
+  clientBrief?: string;
   metadata?: ProjectMetadata;
 }
 
@@ -64,6 +65,7 @@ export interface CreateProjectRequest {
   skillId?: string | null;
   designSystemId?: string | null;
   pendingPrompt?: string;
+  clientBrief?: string;
   metadata?: ProjectMetadata;
 }
 
@@ -72,6 +74,7 @@ export interface UpdateProjectRequest {
   skillId?: string | null;
   designSystemId?: string | null;
   pendingPrompt?: string | null;
+  clientBrief?: string | null;
   metadata?: ProjectMetadata | null;
 }
 

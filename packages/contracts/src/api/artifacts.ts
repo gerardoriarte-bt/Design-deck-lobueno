@@ -56,3 +56,19 @@ export interface SaveArtifactResponse {
   url: string;
   path: string;
 }
+
+export interface ArtifactRecord {
+  id: string;
+  projectId: string;
+  deliverableSlug: string;
+  version: number;
+  parentArtifactId: string | null;
+  fileName: string;
+  title: string;
+  kind: ArtifactKind;
+  createdAt: number;
+}
+
+export interface ArtifactHistoryResponse {
+  artifacts: ArtifactRecord[];
+}
