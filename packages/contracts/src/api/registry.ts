@@ -18,6 +18,23 @@ export interface AgentsResponse {
   agents: AgentInfo[];
 }
 
+export interface SkillInput {
+  name: string;
+  type: 'string' | 'integer' | 'enum' | 'boolean';
+  required?: boolean;
+  default?: string | number | boolean;
+  min?: number;
+  max?: number;
+  values?: string[];
+}
+
+export interface SkillParameter {
+  name: string;
+  type: 'hue' | 'spacing' | 'font-scale' | 'opacity';
+  default: number;
+  range: [number, number];
+}
+
 export interface SkillSummary {
   id: string;
   name: string;
@@ -36,6 +53,9 @@ export interface SkillSummary {
   animations?: boolean | null;
   hasBody: boolean;
   examplePrompt: string;
+  inputs?: SkillInput[];
+  parameters?: SkillParameter[];
+  designSystemSections?: string[] | null;
 }
 
 export interface SkillDetail extends SkillSummary {

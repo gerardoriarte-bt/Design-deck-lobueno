@@ -53,6 +53,9 @@ export async function listSkills(skillsRoot) {
         speakerNotes: normalizeBoolHint(data.od?.speaker_notes),
         animations: normalizeBoolHint(data.od?.animations),
         examplePrompt: derivePrompt(data),
+        inputs: normalizeInputs(data.od?.inputs),
+        parameters: normalizeParameters(data.od?.parameters),
+        designSystemSections: normalizeStringArray(data.od?.design_system?.sections),
         body: hasAttachments ? withSkillRootPreamble(body, dir) : body,
         dir,
       });
@@ -210,3 +213,54 @@ function normalizeScenario(value, body, description) {
 // Surface the vocabulary so callers (frontend filter UI) could mirror it
 // later if they want to. Not exported today, kept here for documentation.
 void KNOWN_SCENARIOS;
+
+// ---------- od.inputs / od.parameters normalizers ----------
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return null;
+  const result = value.filter((v) => typeof v === 'string' && v.trim());
+  return result.length > 0 ? result : null;
+}
+
+const VALID_INPUT_TYPES = new Set(['string', 'integer', 'enum', 'boolean']);
+const VALID_PARAM_TYPES = new Set(['hue', 'spacing', 'font-scale', 'opacity']);
+
+function normalizeInputs(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const type = typeof item.type === 'string' && VALID_INPUT_TYPES.has(item.type)
+      ? item.type
+      : 'string';
+    const out = { name: String(item.name ?? ''), type };
+    if (!out.name) return [];
+    if (item.required === true) out.required = true;
+    if (item.default !== undefined && item.default !== null) out.default = item.default;
+    if (type === 'integer') {
+      if (typeof item.min === 'number') out.min = item.min;
+      if (typeof item.max === 'number') out.max = item.max;
+    }
+    if (type === 'enum' && Array.isArray(item.values)) {
+      out.values = item.values.map(String);
+    }
+    return [out];
+  });
+}
+
+function normalizeParameters(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const type = typeof item.type === 'string' && VALID_PARAM_TYPES.has(item.type)
+      ? item.type
+      : null;
+    if (!type) return [];
+    const name = String(item.name ?? '');
+    if (!name) return [];
+    const def = typeof item.default === 'number' ? item.default : 0;
+    const range = Array.isArray(item.range) && item.range.length === 2
+      ? [Number(item.range[0]), Number(item.range[1])]
+      : [0, 100];
+    return [{ name, type, default: def, range }];
+  });
+}

@@ -57,6 +57,8 @@ import {
   listDeployments,
   listLatestProjectRunStatuses,
   listMessages,
+  insertArtifactVersion,
+  listProjectArtifacts,
   listProjects,
   listTabs,
   listTemplates,
@@ -410,6 +412,11 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
 
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, version: '0.1.0' });
+  });
+
+  app.get('/api/config/providers', (_req, res) => {
+    /** @type {import('@open-design/contracts').ProvidersConfigResponse} */
+    res.json({ openrouter: Boolean(process.env.OPENROUTER_API_KEY) });
   });
 
   // ---- Projects (DB-backed) -------------------------------------------------
@@ -972,6 +979,17 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
     }
   });
 
+  app.get('/api/projects/:id/artifacts', (req, res) => {
+    try {
+      const slug = typeof req.query.slug === 'string' ? req.query.slug : undefined;
+      /** @type {import('@open-design/contracts').ArtifactHistoryResponse} */
+      const body = { artifacts: listProjectArtifacts(db, req.params.id, slug) };
+      res.json(body);
+    } catch (err) {
+      sendApiError(res, 500, 'INTERNAL_ERROR', String(err));
+    }
+  });
+
   app.use('/artifacts', express.static(ARTIFACTS_DIR));
 
   // ---- Deploy --------------------------------------------------------------
@@ -1182,6 +1200,20 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
         const meta = await writeProjectFile(PROJECTS_DIR, req.params.id, name, buf, {
           artifactManifest,
         });
+        if (artifactManifest) {
+          const slug = (artifactManifest.metadata?.identifier || artifactManifest.entry || name)
+            .replace(/\.html?$/, '')
+            .replace(/[^a-z0-9_-]+/gi, '-')
+            .toLowerCase()
+            .slice(0, 80) || 'artifact';
+          insertArtifactVersion(db, {
+            projectId: req.params.id,
+            deliverableSlug: slug,
+            fileName: name,
+            title: artifactManifest.title || name,
+            kind: artifactManifest.kind || 'html',
+          });
+        }
         /** @type {import('@open-design/contracts').ProjectFileResponse} */
         const body = { file: meta };
         res.json(body);
@@ -1241,7 +1273,7 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
     runs: createChatRunService({ createSseResponse, createSseErrorPayload }),
   };
 
-  const composeDaemonSystemPrompt = async ({ projectId, skillId, designSystemId }) => {
+  const composeDaemonSystemPrompt = async ({ projectId, skillId, designSystemId, skillInputValues }) => {
     const project = typeof projectId === 'string' && projectId ? getProject(db, projectId) : null;
     const effectiveSkillId = typeof skillId === 'string' && skillId ? skillId : project?.skillId;
     const effectiveDesignSystemId = typeof designSystemId === 'string' && designSystemId ? designSystemId : project?.designSystemId;
@@ -1250,12 +1282,14 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
     let skillBody;
     let skillName;
     let skillMode;
+    let skillDesignSystemSections;
     if (effectiveSkillId) {
       const skill = (await listSkills(SKILLS_DIR)).find((s) => s.id === effectiveSkillId);
       if (skill) {
         skillBody = skill.body;
         skillName = skill.name;
         skillMode = skill.mode;
+        skillDesignSystemSections = skill.designSystemSections ?? null;
       }
     }
 
@@ -1278,6 +1312,9 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
       skillMode,
       designSystemBody,
       designSystemTitle,
+      clientBrief: project?.clientBrief ?? undefined,
+      skillInputValues: skillInputValues ?? null,
+      skillDesignSystemSections: skillDesignSystemSections ?? null,
       metadata,
       template,
     });
@@ -1300,6 +1337,7 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
       attachments = [],
       model,
       reasoning,
+      skillInputValues,
     } = chatBody;
     if (typeof projectId === 'string' && projectId) run.projectId = projectId;
     if (typeof conversationId === 'string' && conversationId) run.conversationId = conversationId;
@@ -1376,7 +1414,12 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
     const attachmentHint = safeAttachments.length
       ? `\n\nAttached project files: ${safeAttachments.map((p) => `\`${p}\``).join(', ')}`
       : '';
-    const daemonSystemPrompt = await composeDaemonSystemPrompt({ projectId, skillId, designSystemId });
+    const daemonSystemPrompt = await composeDaemonSystemPrompt({
+      projectId,
+      skillId,
+      designSystemId,
+      skillInputValues: skillInputValues && typeof skillInputValues === 'object' ? skillInputValues : null,
+    });
     const instructionPrompt = [daemonSystemPrompt, systemPrompt]
       .map((part) => (typeof part === 'string' ? part.trim() : ''))
       .filter(Boolean)
@@ -1670,7 +1713,14 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
   app.post('/api/proxy/stream', async (req, res) => {
     /** @type {Partial<ProxyStreamRequest>} */
     const proxyBody = req.body || {};
-    const { baseUrl, apiKey, model, systemPrompt, messages } = proxyBody;
+    const { baseUrl, apiKey: clientApiKey, model, systemPrompt, messages } = proxyBody;
+    // Prefer server-side env key for OpenRouter so the secret never reaches
+    // the browser. Fall back to the key the client sent (BYOK path).
+    const isOpenRouter = typeof baseUrl === 'string' &&
+      baseUrl.replace(/\/+$/, '').startsWith('https://openrouter.ai');
+    const apiKey = isOpenRouter && process.env.OPENROUTER_API_KEY
+      ? process.env.OPENROUTER_API_KEY
+      : clientApiKey;
     if (!baseUrl || !apiKey || !model) {
       return sendApiError(res, 400, 'BAD_REQUEST', 'baseUrl, apiKey, and model are required');
     }

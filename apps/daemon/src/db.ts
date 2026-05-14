@@ -120,12 +120,31 @@ function migrate(db) {
 
     CREATE INDEX IF NOT EXISTS idx_deployments_project
       ON deployments(project_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS artifacts (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      deliverable_slug TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      parent_artifact_id TEXT,
+      file_name TEXT NOT NULL,
+      title TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'html',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_artifacts_project
+      ON artifacts(project_id, deliverable_slug, version);
   `);
   // Forward-compatible column add for databases created before metadata_json.
   // SQLite has no IF NOT EXISTS for ALTER, so we check pragma_table_info.
   const cols = db.prepare(`PRAGMA table_info(projects)`).all();
   if (!cols.some((c) => c.name === 'metadata_json')) {
     db.exec(`ALTER TABLE projects ADD COLUMN metadata_json TEXT`);
+  }
+  if (!cols.some((c) => c.name === 'client_brief')) {
+    db.exec(`ALTER TABLE projects ADD COLUMN client_brief TEXT`);
   }
   const messageCols = db.prepare(`PRAGMA table_info(messages)`).all();
   if (!messageCols.some((c) => c.name === 'agent_id')) {
@@ -279,6 +298,7 @@ function normalizeDeployment(row) {
 const PROJECT_COLS = `id, name, skill_id AS skillId,
   design_system_id AS designSystemId,
   pending_prompt AS pendingPrompt,
+  client_brief AS clientBrief,
   metadata_json AS metadataJson,
   created_at AS createdAt,
   updated_at AS updatedAt`;
@@ -365,14 +385,15 @@ export function insertProject(db, p) {
   db.prepare(
     `INSERT INTO projects
        (id, name, skill_id, design_system_id, pending_prompt,
-        metadata_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        client_brief, metadata_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     p.id,
     p.name,
     p.skillId ?? null,
     p.designSystemId ?? null,
     p.pendingPrompt ?? null,
+    p.clientBrief ?? null,
     p.metadata ? JSON.stringify(p.metadata) : null,
     p.createdAt,
     p.updatedAt,
@@ -394,6 +415,7 @@ export function updateProject(db, id, patch) {
             skill_id = ?,
             design_system_id = ?,
             pending_prompt = ?,
+            client_brief = ?,
             metadata_json = ?,
             updated_at = ?
       WHERE id = ?`,
@@ -402,6 +424,7 @@ export function updateProject(db, id, patch) {
     merged.skillId ?? null,
     merged.designSystemId ?? null,
     merged.pendingPrompt ?? null,
+    merged.clientBrief ?? null,
     merged.metadata ? JSON.stringify(merged.metadata) : null,
     merged.updatedAt,
     id,
@@ -428,6 +451,7 @@ function normalizeProject(row) {
     skillId: row.skillId,
     designSystemId: row.designSystemId,
     pendingPrompt: row.pendingPrompt ?? undefined,
+    clientBrief: row.clientBrief ?? undefined,
     metadata,
     createdAt: Number(row.createdAt),
     updatedAt: Number(row.updatedAt),
@@ -743,4 +767,41 @@ export function setTabs(db, projectId, names, activeName) {
   });
   tx();
   return listTabs(db, projectId);
+}
+
+// ---------- artifact versions ----------
+
+const ARTIFACT_COLS = `id, project_id AS projectId, deliverable_slug AS deliverableSlug,
+  version, parent_artifact_id AS parentArtifactId, file_name AS fileName,
+  title, kind, created_at AS createdAt`;
+
+function normalizeArtifactRecord(row) {
+  return {
+    ...row,
+    parentArtifactId: row.parentArtifactId ?? null,
+  };
+}
+
+export function insertArtifactVersion(db, { projectId, deliverableSlug, fileName, title, kind = 'html' }) {
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const existing = db
+    .prepare(`SELECT MAX(version) AS maxVersion FROM artifacts WHERE project_id = ? AND deliverable_slug = ?`)
+    .get(projectId, deliverableSlug);
+  const version = (existing?.maxVersion ?? 0) + 1;
+  db.prepare(
+    `INSERT INTO artifacts (id, project_id, deliverable_slug, version, file_name, title, kind, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, projectId, deliverableSlug, version, fileName, title, kind, now);
+  return db.prepare(`SELECT ${ARTIFACT_COLS} FROM artifacts WHERE id = ?`).get(id);
+}
+
+export function listProjectArtifacts(db, projectId, deliverableSlug) {
+  const query = deliverableSlug
+    ? `SELECT ${ARTIFACT_COLS} FROM artifacts WHERE project_id = ? AND deliverable_slug = ? ORDER BY deliverable_slug, version DESC`
+    : `SELECT ${ARTIFACT_COLS} FROM artifacts WHERE project_id = ? ORDER BY deliverable_slug, version DESC`;
+  const rows = deliverableSlug
+    ? db.prepare(query).all(projectId, deliverableSlug)
+    : db.prepare(query).all(projectId);
+  return rows.map(normalizeArtifactRecord);
 }

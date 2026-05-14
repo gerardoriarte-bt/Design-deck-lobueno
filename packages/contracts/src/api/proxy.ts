@@ -1,3 +1,7 @@
+export interface ProvidersConfigResponse {
+  openrouter: boolean;
+}
+
 export type ProxyMessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface ProxyMessage {
@@ -7,7 +11,7 @@ export interface ProxyMessage {
 
 export interface ProxyStreamRequest {
   baseUrl: string;
-  apiKey: string;
+  apiKey?: string;
   model: string;
   systemPrompt?: string;
   messages: ProxyMessage[];

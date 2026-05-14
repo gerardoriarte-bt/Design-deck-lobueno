@@ -42,6 +42,18 @@ export interface ComposeInput {
   skillMode?: 'prototype' | 'deck' | 'template' | 'design-system' | undefined;
   designSystemBody?: string | undefined;
   designSystemTitle?: string | undefined;
+  // Persistent client/project brief saved at the project level. Injected
+  // between the design system and the skill so it scopes every generation
+  // without the user having to repeat it in each prompt.
+  clientBrief?: string | undefined;
+  // Values the user filled in for the active skill's od.inputs fields.
+  // Keys are input names; values are the typed values. Used to interpolate
+  // {{name}} placeholders in the skill body before injection.
+  skillInputValues?: Record<string, unknown> | null | undefined;
+  // Subset of DESIGN.md sections to inject (od.design_system.sections).
+  // When non-empty, sections not matching these keys are stripped before
+  // the design system body is added to the prompt.
+  skillDesignSystemSections?: string[] | null | undefined;
   // Project-level metadata captured by the new-project panel. Drives the
   // agent's understanding of artifact kind, fidelity, speaker-notes intent
   // and animation intent. Missing fields here are exactly what the
@@ -59,6 +71,9 @@ export function composeSystemPrompt({
   skillMode,
   designSystemBody,
   designSystemTitle,
+  clientBrief,
+  skillInputValues,
+  skillDesignSystemSections,
   metadata,
   template,
 }: ComposeInput): string {
@@ -73,15 +88,29 @@ export function composeSystemPrompt({
   ];
 
   if (designSystemBody && designSystemBody.trim().length > 0) {
+    const prunedBody = skillDesignSystemSections?.length
+      ? filterDesignSystemSections(designSystemBody, skillDesignSystemSections)
+      : designSystemBody;
+    if (prunedBody.trim().length > 0) {
+      parts.push(
+        `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${prunedBody.trim()}`,
+      );
+    }
+  }
+
+  if (clientBrief && clientBrief.trim().length > 0) {
     parts.push(
-      `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${designSystemBody.trim()}`,
+      `\n\n## Client brief\n\nThe following brief applies to every artifact in this project. Use it to shape tone, naming, audience assumptions, and constraints. It overrides any generic defaults from the design system or skill.\n\n${clientBrief.trim()}`,
     );
   }
 
   if (skillBody && skillBody.trim().length > 0) {
-    const preflight = derivePreflight(skillBody);
+    const interpolated = skillInputValues
+      ? skillBody.replace(/\{\{(\w+)\}\}/g, (_, k) => String(skillInputValues[k] ?? ''))
+      : skillBody;
+    const preflight = derivePreflight(interpolated);
     parts.push(
-      `\n\n## Active skill${skillName ? ` — ${skillName}` : ''}\n\nFollow this skill's workflow exactly.${preflight}\n\n${skillBody.trim()}`,
+      `\n\n## Active skill${skillName ? ` — ${skillName}` : ''}\n\nFollow this skill's workflow exactly.${preflight}\n\n${interpolated.trim()}`,
     );
   }
 
@@ -176,6 +205,30 @@ function renderMetadataBlock(
   }
 
   return lines.join('\n');
+}
+
+const SECTION_KEYWORDS: Record<string, string[]> = {
+  'theme':         ['visual theme', 'atmosphere'],
+  'color':         ['color palette', 'colour palette'],
+  'typography':    ['typography'],
+  'components':    ['component'],
+  'layout':        ['layout'],
+  'depth':         ['depth', 'elevation'],
+  'dos-and-donts': ["do's", 'donts', "don't"],
+  'responsive':    ['responsive'],
+  'agent-prompt':  ['agent prompt', 'prompt guide'],
+};
+
+function filterDesignSystemSections(body: string, sections: string[]): string {
+  const keywords = sections.flatMap((s) => SECTION_KEYWORDS[s] ?? [s.toLowerCase()]);
+  if (!keywords.length) return body;
+  const parts = body.split(/(?=^##\s)/m);
+  const intro = parts[0] ?? '';
+  const kept = parts.slice(1).filter((p) => {
+    const heading = (p.match(/^##[^#].*$/m)?.[0] ?? '').toLowerCase();
+    return keywords.some((k) => heading.includes(k));
+  });
+  return [intro, ...kept].join('');
 }
 
 /**
