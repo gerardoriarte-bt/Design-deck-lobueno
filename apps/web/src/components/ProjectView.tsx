@@ -259,9 +259,8 @@ export function ProjectView({
   // mount we also do an initial pull so attachments staged before the
   // agent has written anything still see the user's pasted images.
   useEffect(() => {
-    if (!daemonLive) return;
     void refreshProjectFiles();
-  }, [daemonLive, refreshProjectFiles, filesRefresh]);
+  }, [refreshProjectFiles, filesRefresh]);
 
   // When the URL points at a specific file, fire an open request so the
   // FileWorkspace promotes it to an active tab. We watch routeFileName
