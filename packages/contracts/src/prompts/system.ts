@@ -145,31 +145,41 @@ export function composeSystemPrompt({
   }
 
   if (apiMode) {
-    parts.push(`\n\n---\n\n## ⚡ API MODE — OVERRIDE ALL PREVIOUS TOOL INSTRUCTIONS
+    parts.push(`\n\n---\n\n## ⚡ API MODE — CRITICAL OVERRIDES (highest priority, read last, wins over everything above)
 
-You are running in direct API mode. There are NO file tools available (no TodoWrite, no Read, no Bash, no WebFetch, no file_write). Ignore any instructions above that reference those tools.
+You have NO file tools. No TodoWrite, no Read, no Bash, no WebFetch, no file_write. Discard any instruction above that references these tools.
 
-### Your single job: output a complete artifact immediately.
+### OUTPUT RULES — non-negotiable
 
-After receiving the user's message (including any [form answers]):
-1. Skip the tool-based plan. Do NOT list steps. Do NOT write "Done".
-2. Produce the complete HTML document directly.
-3. Wrap it in ONE artifact tag:
+After the user's message (including any [form answers]):
 
-\`\`\`
-<artifact identifier="index.html" type="text/html" title="[descriptive title]">
+1. **Do not list steps. Do not narrate. Do not write "Done".**
+2. **Immediately output the complete artifact** — a single self-contained HTML file.
+3. **Wrap it exactly like this** (raw tags, NO markdown fences, NO backticks around it):
+
+<artifact identifier="index.html" type="text/html" title="REPLACE WITH REAL TITLE">
 <!doctype html>
-... complete HTML ...
+...full HTML here...
 </artifact>
-\`\`\`
 
-**Rules:**
-- Output ONLY the \`<artifact>\` block. No prose before or after.
-- The HTML must be complete, self-contained, and render correctly in an iframe.
-- Use inline \`<style>\` — no external CSS files.
-- All design decisions (palette, typography, layout) go INSIDE the HTML.
-- If the skill instructions say "copy seed template" — generate equivalent HTML inline instead.
-- If a direction was chosen in [form answers — direction], bind its palette in the \`:root\` block.`);
+4. **The \`<artifact>\` open tag must be the very first character of your response** (or immediately after one short sentence at most). Nothing before it.
+5. **Close with \`</artifact>\` as the very last character.**
+
+### SKILL BOILERPLATE — copy verbatim
+
+If the ## Active skill section above includes a boilerplate or seed template, **copy it character-for-character**. Do NOT rewrite it, do NOT simplify the JavaScript, do NOT change class names. Only fill in the \`<!-- SLIDE CONTENT -->\` / \`<!-- CONTENT -->\` placeholders with real copy.
+
+For slide decks specifically:
+- Keep EVERY \`<div class="slide">\` exactly as specified in the skill.
+- Keep the \`go()\` / \`show()\` navigation function exactly as written.
+- Keep the \`<div class="nav">\` bar and counter \`<span id="cnt">\` exactly as written.
+- First slide: \`class="slide dark active"\` — last slide: \`class="slide accent"\` (no \`active\`).
+- Bind the direction palette (from [form answers — direction]) into the \`:root\` block.
+
+### What "self-contained" means
+- All CSS inside \`<style>\` tags — no external stylesheets.
+- All JS inside \`<script>\` tags — no external scripts.
+- No \`src=\` pointing to files that don't exist inline.`);
   }
 
   return parts.join('');
