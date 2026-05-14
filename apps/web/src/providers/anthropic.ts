@@ -41,7 +41,7 @@ export async function streamMessage(
   }
 
   if (!cfg.apiKey) {
-    handlers.onError(new Error('Missing API key — open Settings and paste one in.'));
+    handlers.onError(new Error('Anthropic API key requerida — configúrala en Settings.'));
     return;
   }
 
