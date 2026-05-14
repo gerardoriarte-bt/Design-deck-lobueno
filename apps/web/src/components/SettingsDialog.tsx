@@ -21,10 +21,10 @@ interface Props {
 }
 
 const SELECT_MODELS: Array<{ id: string; label: string }> = [
-  { id: 'google/gemini-2.5-flash',      label: 'Gemini 2.5 Flash — rápido y eficiente (recomendado)' },
-  { id: 'google/gemini-2.5-pro',        label: 'Gemini 2.5 Pro — máxima calidad' },
-  { id: 'anthropic/claude-sonnet-4-6',  label: 'Claude Sonnet 4.6' },
+  { id: 'anthropic/claude-sonnet-4-6',  label: 'Claude Sonnet 4.6 — recomendado' },
   { id: 'anthropic/claude-haiku-4-5',   label: 'Claude Haiku 4.5 — más económico' },
+  { id: 'google/gemini-2.5-pro',        label: 'Gemini 2.5 Pro' },
+  { id: 'google/gemini-2.5-flash',      label: 'Gemini 2.5 Flash — rápido' },
   { id: 'openai/gpt-4o-mini',           label: 'GPT-4o Mini' },
 ];
 

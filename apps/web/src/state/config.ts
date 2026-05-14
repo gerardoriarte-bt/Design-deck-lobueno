@@ -8,7 +8,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   mode: 'api',
   apiKey: '',
   baseUrl: OPENROUTER_BASE_URL,
-  model: 'google/gemini-2.5-flash',
+  model: 'anthropic/claude-sonnet-4-6',
   agentId: null,
   skillId: null,
   designSystemId: null,
@@ -26,7 +26,7 @@ export function loadConfig(): AppConfig {
       ...parsed,
       mode: 'api',
       baseUrl: OPENROUTER_BASE_URL,
-      model: parsed.model && parsed.model !== 'claude-sonnet-4-5' && parsed.model !== 'claude-sonnet-4-6'
+      model: parsed.model && !['claude-sonnet-4-5', 'claude-sonnet-4-6', 'google/gemini-2.5-flash'].includes(parsed.model)
         ? parsed.model
         : DEFAULT_CONFIG.model,
     };

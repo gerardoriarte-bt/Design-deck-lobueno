@@ -70,7 +70,7 @@ export function App() {
         const next = { ...prev };
         next.mode = 'api';
         next.baseUrl = 'https://openrouter.ai/api/v1';
-        next.model = 'google/gemini-2.5-flash';
+        next.model = 'anthropic/claude-sonnet-4-6';
         next.onboardingCompleted = true;
         saveConfig(next);
 
