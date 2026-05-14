@@ -36,6 +36,22 @@ import { DECK_FRAMEWORK_DIRECTIVE } from './deck-framework';
 
 export const BASE_SYSTEM_PROMPT = OFFICIAL_DESIGNER_PROMPT;
 
+const API_MODE_DIRECTIVE = `## ⚡ OUTPUT INSTRUCTIONS (mandatory)
+
+You are a design assistant generating a self-contained HTML artifact. No file tools exist.
+
+**Your entire response must be:**
+<artifact identifier="index.html" type="text/html" title="REPLACE WITH REAL TITLE">
+<!doctype html>
+...complete HTML here...
+</artifact>
+
+Rules:
+- Start with \`<artifact\` — nothing before it, no backticks, no markdown.
+- End with \`</artifact>\` as the last characters.
+- All CSS inside \`<style>\`, all JS inside \`<script>\`. No external files.
+- For slide decks: copy the boilerplate from "Skill instructions" VERBATIM. Keep every \`<div class="slide">\`, the \`go()\` function, \`<div class="nav">\`, and \`<span id="cnt">\` exactly as written. Fill ONLY the \`<!-- SLIDE CONTENT -->\` placeholders with real copy. First slide: \`class="slide dark active"\`. Last slide: \`class="slide accent"\`.`;
+
 export interface ComposeInput {
   skillBody?: string | undefined;
   skillName?: string | undefined;
@@ -81,10 +97,31 @@ export function composeSystemPrompt({
   template,
   apiMode,
 }: ComposeInput): string {
-  // Discovery + philosophy goes FIRST so its hard rules ("emit a form on
-  // turn 1", "branch on brand on turn 2", "TodoWrite on turn 3", run
-  // checklist + critique before <artifact>) win precedence over softer
-  // wording later in the official base prompt.
+  // API mode: skip the multi-turn daemon workflow entirely. Use a minimal
+  // prompt: skill body + brief context + output directive. This avoids
+  // overwhelming smaller models with thousands of tokens of CLI-specific
+  // instructions they cannot act on.
+  if (apiMode) {
+    const interpolated = skillBody && skillInputValues
+      ? skillBody.replace(/\{\{(\w+)\}\}/g, (_, k) => String(skillInputValues[k] ?? ''))
+      : skillBody ?? '';
+
+    const apiParts: string[] = [];
+
+    if (clientBrief?.trim()) {
+      apiParts.push(`## Client brief\n\n${clientBrief.trim()}`);
+    }
+
+    if (interpolated.trim()) {
+      apiParts.push(`## Skill instructions${skillName ? ` — ${skillName}` : ''}\n\n${interpolated.trim()}`);
+    }
+
+    apiParts.push(API_MODE_DIRECTIVE);
+    return apiParts.join('\n\n---\n\n');
+  }
+
+  // Daemon / CLI mode: full multi-turn workflow with discovery forms,
+  // TodoWrite, file tools, and the official designer charter.
   const parts: string[] = [
     DISCOVERY_AND_PHILOSOPHY,
     '\n\n---\n\n# Identity and workflow charter (background)\n\n',
@@ -142,44 +179,6 @@ export function composeSystemPrompt({
     !!skillBody && /assets\/template\.html/.test(skillBody);
   if (isDeckProject && !hasSkillSeed) {
     parts.push(`\n\n---\n\n${DECK_FRAMEWORK_DIRECTIVE}`);
-  }
-
-  if (apiMode) {
-    parts.push(`\n\n---\n\n## ⚡ API MODE — CRITICAL OVERRIDES (highest priority, read last, wins over everything above)
-
-You have NO file tools. No TodoWrite, no Read, no Bash, no WebFetch, no file_write. Discard any instruction above that references these tools.
-
-### OUTPUT RULES — non-negotiable
-
-After the user's message (including any [form answers]):
-
-1. **Do not list steps. Do not narrate. Do not write "Done".**
-2. **Immediately output the complete artifact** — a single self-contained HTML file.
-3. **Wrap it exactly like this** (raw tags, NO markdown fences, NO backticks around it):
-
-<artifact identifier="index.html" type="text/html" title="REPLACE WITH REAL TITLE">
-<!doctype html>
-...full HTML here...
-</artifact>
-
-4. **The \`<artifact>\` open tag must be the very first character of your response** (or immediately after one short sentence at most). Nothing before it.
-5. **Close with \`</artifact>\` as the very last character.**
-
-### SKILL BOILERPLATE — copy verbatim
-
-If the ## Active skill section above includes a boilerplate or seed template, **copy it character-for-character**. Do NOT rewrite it, do NOT simplify the JavaScript, do NOT change class names. Only fill in the \`<!-- SLIDE CONTENT -->\` / \`<!-- CONTENT -->\` placeholders with real copy.
-
-For slide decks specifically:
-- Keep EVERY \`<div class="slide">\` exactly as specified in the skill.
-- Keep the \`go()\` / \`show()\` navigation function exactly as written.
-- Keep the \`<div class="nav">\` bar and counter \`<span id="cnt">\` exactly as written.
-- First slide: \`class="slide dark active"\` — last slide: \`class="slide accent"\` (no \`active\`).
-- Bind the direction palette (from [form answers — direction]) into the \`:root\` block.
-
-### What "self-contained" means
-- All CSS inside \`<style>\` tags — no external stylesheets.
-- All JS inside \`<script>\` tags — no external scripts.
-- No \`src=\` pointing to files that don't exist inline.`);
   }
 
   return parts.join('');
