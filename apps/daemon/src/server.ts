@@ -1762,7 +1762,7 @@ export async function startServer({ port = 7456, returnServer = false } = {}) {
 
     const payload = {
       model,
-      max_tokens: 8192,
+      max_tokens: 32768,
       stream: true,
       ...(isMiMo ? { tool_choice: 'none', tools: [] } : {}),
       messages: [
