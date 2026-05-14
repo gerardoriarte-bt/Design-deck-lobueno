@@ -1,5 +1,6 @@
 import type {
   AgentInfo,
+  ArtifactRecord,
   ChatAttachment,
   DeployConfigResponse,
   DeployProjectFileResponse,
@@ -418,5 +419,20 @@ export async function fetchDesignSystemShowcase(id: string): Promise<string | nu
     return await resp.text();
   } catch {
     return null;
+  }
+}
+
+export async function fetchArtifactHistory(
+  projectId: string,
+  slug?: string,
+): Promise<ArtifactRecord[]> {
+  try {
+    const qs = slug ? `?slug=${encodeURIComponent(slug)}` : '';
+    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/artifacts${qs}`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.artifacts ?? [];
+  } catch {
+    return [];
   }
 }
