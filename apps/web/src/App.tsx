@@ -51,7 +51,7 @@ export function App() {
       const alive = await daemonIsLive();
       if (cancelled) return;
       setDaemonLive(alive);
-      const [agentList, skillList, dsList, projectList, templateList] =
+      const [agentList, skillList, dsList, projectList, templateList, providersResp] =
         await Promise.all([
           alive ? fetchAgents() : Promise.resolve([] as AgentInfo[]),
           alive ? fetchSkills() : Promise.resolve([] as SkillSummary[]),
@@ -60,7 +60,9 @@ export function App() {
             : Promise.resolve([] as DesignSystemSummary[]),
           alive ? listProjects() : Promise.resolve([] as Project[]),
           alive ? listTemplates() : Promise.resolve([] as ProjectTemplate[]),
+          alive ? fetch('/api/config/providers').then((r) => r.json()).catch(() => ({})) : Promise.resolve({}),
         ]);
+      const hasServerOpenRouter = Boolean((providersResp as { openrouter?: boolean }).openrouter);
       if (cancelled) return;
       setAgents(agentList);
       setSkills(skillList);
@@ -84,9 +86,17 @@ export function App() {
         }
         saveConfig(next);
 
-        // Pop the onboarding modal only on the first run. Once the user has
-        // saved or skipped past it once, we trust their stored config and
-        // let them re-open Settings explicitly via the env pill.
+        // If server has OpenRouter key, always use api mode through the daemon
+        // proxy — daemon mode requires a local agent CLI which doesn't exist
+        // in production deployments.
+        if (hasServerOpenRouter) {
+          next.mode = 'api';
+          next.baseUrl = 'https://openrouter.ai/api/v1';
+          next.model = 'google/gemini-2.5-flash';
+          next.onboardingCompleted = true;
+        }
+
+        // Pop the onboarding modal only on the first run.
         if (!next.onboardingCompleted) {
           setSettingsWelcome(true);
           setSettingsOpen(true);

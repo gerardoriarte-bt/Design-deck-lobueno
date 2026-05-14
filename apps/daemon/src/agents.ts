@@ -107,7 +107,7 @@ export const AGENT_DEFS = [
       { id: 'opus', label: 'Opus (alias)' },
       { id: 'haiku', label: 'Haiku (alias)' },
       { id: 'claude-opus-4-5', label: 'claude-opus-4-5' },
-      { id: 'claude-sonnet-4-5', label: 'claude-sonnet-4-5' },
+      { id: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6' },
       { id: 'claude-haiku-4-5', label: 'claude-haiku-4-5' },
     ],
     buildArgs: (prompt, _imagePaths, extraAllowedDirs = [], options = {}) => {
@@ -225,7 +225,7 @@ export const AGENT_DEFS = [
     },
     fallbackModels: [
       DEFAULT_MODEL_OPTION,
-      { id: 'anthropic/claude-sonnet-4-5', label: 'anthropic/claude-sonnet-4-5' },
+      { id: 'anthropic/claude-sonnet-4-6', label: 'anthropic/claude-sonnet-4-6' },
       { id: 'openai/gpt-5', label: 'openai/gpt-5' },
       { id: 'google/gemini-2.5-pro', label: 'google/gemini-2.5-pro' },
     ],
@@ -426,7 +426,7 @@ export const AGENT_DEFS = [
     // `pi --list-models` fails or times out.
     fallbackModels: [
       DEFAULT_MODEL_OPTION,
-      { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (anthropic)' },
+      { id: 'anthropic/claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (anthropic)' },
       { id: 'anthropic/claude-opus-4-5', label: 'Claude Opus 4.5 (anthropic)' },
       { id: 'openai/gpt-5', label: 'GPT-5 (openai)' },
       { id: 'openai/o4-mini', label: 'o4-mini (openai)' },
