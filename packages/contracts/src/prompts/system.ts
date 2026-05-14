@@ -42,6 +42,9 @@ export interface ComposeInput {
   skillMode?: 'prototype' | 'deck' | 'template' | 'design-system' | undefined;
   designSystemBody?: string | undefined;
   designSystemTitle?: string | undefined;
+  /** When true, appends an API-mode override that disables tool-based workflow
+   * and forces direct <artifact> HTML output in a single response. */
+  apiMode?: boolean | undefined;
   // Persistent client/project brief saved at the project level. Injected
   // between the design system and the skill so it scopes every generation
   // without the user having to repeat it in each prompt.
@@ -76,6 +79,7 @@ export function composeSystemPrompt({
   skillDesignSystemSections,
   metadata,
   template,
+  apiMode,
 }: ComposeInput): string {
   // Discovery + philosophy goes FIRST so its hard rules ("emit a form on
   // turn 1", "branch on brand on turn 2", "TodoWrite on turn 3", run
@@ -138,6 +142,34 @@ export function composeSystemPrompt({
     !!skillBody && /assets\/template\.html/.test(skillBody);
   if (isDeckProject && !hasSkillSeed) {
     parts.push(`\n\n---\n\n${DECK_FRAMEWORK_DIRECTIVE}`);
+  }
+
+  if (apiMode) {
+    parts.push(`\n\n---\n\n## ⚡ API MODE — OVERRIDE ALL PREVIOUS TOOL INSTRUCTIONS
+
+You are running in direct API mode. There are NO file tools available (no TodoWrite, no Read, no Bash, no WebFetch, no file_write). Ignore any instructions above that reference those tools.
+
+### Your single job: output a complete artifact immediately.
+
+After receiving the user's message (including any [form answers]):
+1. Skip the tool-based plan. Do NOT list steps. Do NOT write "Done".
+2. Produce the complete HTML document directly.
+3. Wrap it in ONE artifact tag:
+
+\`\`\`
+<artifact identifier="index.html" type="text/html" title="[descriptive title]">
+<!doctype html>
+... complete HTML ...
+</artifact>
+\`\`\`
+
+**Rules:**
+- Output ONLY the \`<artifact>\` block. No prose before or after.
+- The HTML must be complete, self-contained, and render correctly in an iframe.
+- Use inline \`<style>\` — no external CSS files.
+- All design decisions (palette, typography, layout) go INSIDE the HTML.
+- If the skill instructions say "copy seed template" — generate equivalent HTML inline instead.
+- If a direction was chosen in [form answers — direction], bind its palette in the \`:root\` block.`);
   }
 
   return parts.join('');

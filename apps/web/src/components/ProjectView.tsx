@@ -10,6 +10,7 @@ import {
   streamViaDaemon,
 } from '../providers/daemon';
 import {
+  fetchArtifactHistory,
   fetchDesignSystem,
   fetchProjectFiles,
   fetchSkill,
@@ -36,6 +37,7 @@ import type {
   AgentInfo,
   AppConfig,
   Artifact,
+  ArtifactRecord,
   ChatAttachment,
   ChatMessage,
   Conversation,
@@ -116,6 +118,11 @@ export function ProjectView({
   // include a nonce so re-clicking the same name after the user closed the
   // tab still focuses it.
   const [openRequest, setOpenRequest] = useState<{ name: string; nonce: number } | null>(null);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [briefDraft, setBriefDraft] = useState(project.clientBrief ?? '');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [artifactHistory, setArtifactHistory] = useState<ArtifactRecord[]>([]);
+  const [skillInputValues, setSkillInputValues] = useState<Record<string, unknown>>({});
   const abortRef = useRef<AbortController | null>(null);
   const cancelRef = useRef<AbortController | null>(null);
   const reattachControllersRef = useRef<Map<string, AbortController>>(new Map());
@@ -334,19 +341,26 @@ export function ProjectView({
         }
       }
     }
+    const activeSkillDetail = skills.find((s) => s.id === project.skillId);
     return composeSystemPrompt({
       skillBody,
       skillName,
       skillMode,
       designSystemBody,
       designSystemTitle,
+      clientBrief: project.clientBrief,
+      skillInputValues: Object.keys(skillInputValues).length ? skillInputValues : null,
+      skillDesignSystemSections: activeSkillDetail?.designSystemSections ?? null,
       metadata: project.metadata,
       template,
+      apiMode: config.mode === 'api',
     });
   }, [
     project.skillId,
     project.designSystemId,
+    project.clientBrief,
     project.metadata,
+    skillInputValues,
     skills,
     designSystems,
   ]);
@@ -784,6 +798,7 @@ export function ProjectView({
           attachments: attachments.map((a) => a.path),
           model: choice?.model ?? null,
           reasoning: choice?.reasoning ?? null,
+          skillInputValues: Object.keys(skillInputValues).length ? skillInputValues : null,
           onRunCreated: (runId) => {
             updateMessageById(assistantId, (prev) => ({ ...prev, runId, runStatus: 'queued' }), true);
           },
@@ -871,9 +886,26 @@ export function ProjectView({
         // sees it without an extra click. The Write-tool path already does
         // this for tool-emitted files; this handles the artifact-tag path.
         requestOpenFile(file.name);
+        fetchArtifactHistory(project.id).then(setArtifactHistory).catch(() => {});
       }
     },
     [project.id, projectFiles, requestOpenFile],
+  );
+
+  const handleContinueFromVersion = useCallback(
+    async (record: ArtifactRecord) => {
+      setHistoryOpen(false);
+      requestOpenFile(record.fileName);
+      const fresh = await createConversation(project.id);
+      if (!fresh) return;
+      setConversations((curr) => [fresh, ...curr]);
+      setActiveConversationId(fresh.id);
+      void handleSend(
+        `Continúa el diseño desde la versión anterior (v${record.version}): \`${record.fileName}\`. Lee el archivo del proyecto, tómalo como punto de partida y aplica las mejoras o cambios que indique el usuario.`,
+        [],
+      );
+    },
+    [project.id, requestOpenFile, handleSend],
   );
 
   const handleContinueRemainingTasks = useCallback(
@@ -1000,6 +1032,24 @@ export function ProjectView({
     [project.id],
   );
 
+  const activeSkill = useMemo(
+    () => skills.find((s) => s.id === project.skillId) ?? null,
+    [skills, project.skillId],
+  );
+
+  // Reset input values when the skill changes, seeding defaults.
+  useEffect(() => {
+    if (!activeSkill?.inputs?.length) {
+      setSkillInputValues({});
+      return;
+    }
+    const defaults: Record<string, unknown> = {};
+    for (const input of activeSkill.inputs) {
+      if (input.default !== undefined) defaults[input.name] = input.default;
+    }
+    setSkillInputValues(defaults);
+  }, [project.skillId]);
+
   const handleProjectRename = useCallback(
     (newName: string) => {
       const trimmed = newName.trim();
@@ -1010,6 +1060,14 @@ export function ProjectView({
     },
     [project, onProjectChange],
   );
+
+  const handleBriefSave = useCallback(() => {
+    const trimmed = briefDraft.trim();
+    if (trimmed === (project.clientBrief ?? '')) return;
+    const updated: Project = { ...project, clientBrief: trimmed || undefined };
+    onProjectChange(updated);
+    void patchProject(project.id, { clientBrief: trimmed });
+  }, [briefDraft, project, onProjectChange]);
 
   const projectMeta = useMemo(() => {
     const skill = skills.find((s) => s.id === project.skillId)?.name;
@@ -1079,6 +1137,22 @@ export function ProjectView({
           </div>
         </div>
         <div className="topbar-right">
+          <button
+            className={`ghost brief-btn${historyOpen ? ' active' : ''}`}
+            onClick={() => { setHistoryOpen((v) => !v); if (!historyOpen) fetchArtifactHistory(project.id).then(setArtifactHistory).catch(() => {}); }}
+            title="Historial de versiones"
+            aria-label="Historial de versiones"
+          >
+            <Icon name="history" size={14} />
+          </button>
+          <button
+            className={`ghost brief-btn${briefOpen ? ' active' : ''}`}
+            onClick={() => setBriefOpen((v) => !v)}
+            title="Brief de cliente"
+            aria-label="Brief de cliente"
+          >
+            <Icon name="file" size={14} />
+          </button>
           <AvatarMenu
             config={config}
             agents={agents}
@@ -1092,6 +1166,125 @@ export function ProjectView({
           />
         </div>
       </div>
+      {activeSkill?.inputs && activeSkill.inputs.length > 0 && (
+        <div className="skill-inputs-panel">
+          {activeSkill.inputs.map((input) => (
+            <label key={input.name} className="skill-input-field">
+              <span className="skill-input-label">
+                {input.name.replace(/_/g, ' ')}
+                {input.required && <span className="skill-input-required">*</span>}
+              </span>
+              {input.type === 'enum' && input.values ? (
+                <select
+                  value={String(skillInputValues[input.name] ?? input.default ?? '')}
+                  onChange={(e) =>
+                    setSkillInputValues((v) => ({ ...v, [input.name]: e.target.value }))
+                  }
+                >
+                  {input.values.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              ) : input.type === 'boolean' ? (
+                <input
+                  type="checkbox"
+                  checked={Boolean(skillInputValues[input.name] ?? input.default ?? false)}
+                  onChange={(e) =>
+                    setSkillInputValues((v) => ({ ...v, [input.name]: e.target.checked }))
+                  }
+                />
+              ) : input.type === 'integer' ? (
+                <input
+                  type="number"
+                  min={input.min}
+                  max={input.max}
+                  value={String(skillInputValues[input.name] ?? input.default ?? '')}
+                  onChange={(e) =>
+                    setSkillInputValues((v) => ({ ...v, [input.name]: Number(e.target.value) }))
+                  }
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(skillInputValues[input.name] ?? input.default ?? '')}
+                  onChange={(e) =>
+                    setSkillInputValues((v) => ({ ...v, [input.name]: e.target.value }))
+                  }
+                />
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+      {briefOpen && (
+        <div className="brief-panel">
+          <div className="brief-panel-header">
+            <span className="brief-panel-title">Brief de cliente</span>
+            <button
+              className="ghost brief-panel-close"
+              onClick={() => { handleBriefSave(); setBriefOpen(false); }}
+              aria-label="Cerrar"
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+          <textarea
+            className="brief-panel-textarea"
+            value={briefDraft}
+            onChange={(e) => setBriefDraft(e.target.value)}
+            onBlur={handleBriefSave}
+            placeholder="Describe el cliente, industria, audiencia objetivo, tono, restricciones de marca… Este contexto se inyecta en cada generación del proyecto."
+            rows={6}
+          />
+        </div>
+      )}
+      {historyOpen && (
+        <div className="brief-panel">
+          <div className="brief-panel-header">
+            <span className="brief-panel-title">Historial de versiones</span>
+            <button
+              className="ghost brief-panel-close"
+              onClick={() => setHistoryOpen(false)}
+              aria-label="Cerrar"
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+          {artifactHistory.length === 0 ? (
+            <p className="brief-panel-empty">Sin versiones guardadas aún.</p>
+          ) : (
+            <ul className="artifact-history-list">
+              {artifactHistory.map((rec) => (
+                <li key={rec.id} className="artifact-history-item">
+                  <div className="artifact-history-meta">
+                    <span className="artifact-history-slug">{rec.deliverableSlug}</span>
+                    <span className="artifact-history-version">v{rec.version}</span>
+                    <span className="artifact-history-date">
+                      {new Date(rec.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="artifact-history-title">{rec.title}</div>
+                  <div className="artifact-history-actions">
+                    <button
+                      className="ghost artifact-history-open"
+                      onClick={() => { requestOpenFile(rec.fileName); setHistoryOpen(false); }}
+                    >
+                      Abrir
+                    </button>
+                    <button
+                      className="ghost artifact-history-continue"
+                      disabled={streaming}
+                      onClick={() => void handleContinueFromVersion(rec)}
+                    >
+                      Continuar desde aquí
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="split">
         <ChatPane
           // The conversation id is part of the key so switching conversations
