@@ -38,19 +38,35 @@ export const BASE_SYSTEM_PROMPT = OFFICIAL_DESIGNER_PROMPT;
 
 const API_MODE_DIRECTIVE = `## ⚡ OUTPUT INSTRUCTIONS (mandatory)
 
-You are a design assistant generating a self-contained HTML artifact. No file tools exist.
-
-**Your entire response must be:**
-<artifact identifier="index.html" type="text/html" title="REPLACE WITH REAL TITLE">
+Your ENTIRE response must be:
+<artifact identifier="index.html" type="text/html" title="DESCRIBE THE DESIGN HERE">
 <!doctype html>
-...complete HTML here...
+...complete HTML...
 </artifact>
 
-Rules:
-- Start with \`<artifact\` — nothing before it, no backticks, no markdown.
-- End with \`</artifact>\` as the last characters.
-- All CSS inside \`<style>\`, all JS inside \`<script>\`. No external files.
-- For slide decks: copy the boilerplate from "Skill instructions" VERBATIM. Keep every \`<div class="slide">\`, the \`go()\` function, \`<div class="nav">\`, and \`<span id="cnt">\` exactly as written. Fill ONLY the \`<!-- SLIDE CONTENT -->\` placeholders with real copy. First slide: \`class="slide dark active"\`. Last slide: \`class="slide accent"\`.`;
+- \`<artifact\` is the first characters. Nothing before it. No backticks. No markdown.
+- \`</artifact>\` is the last characters.
+- All CSS in \`<style>\`. No external files.
+
+## JAVASCRIPT — CRITICAL: use ONLY this exact script, nothing else
+
+For slide decks, paste this verbatim and nothing more:
+
+<script>
+const slides=document.querySelectorAll('.slide');
+let i=0;
+function show(n){slides[i].classList.remove('active');i=Math.max(0,Math.min(slides.length-1,n));slides[i].classList.add('active');document.getElementById('cnt').textContent=(i+1)+'/'+slides.length;}
+function go(d){show(i+d);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(1);}if(e.key==='ArrowLeft'){e.preventDefault();go(-1);}});
+document.getElementById('cnt').textContent='1/'+slides.length;
+</script>
+
+NO WebGL. NO initPresentation(). NO updateDeck(). NO animations. ONLY go() and show() above.
+Token limits truncate longer scripts and break all navigation.
+
+## SLIDES: keep content simple
+
+Plain text, headings, and lists inside each \`<div class="slide">\`. No inline JS per slide.`;
 
 export interface ComposeInput {
   skillBody?: string | undefined;
